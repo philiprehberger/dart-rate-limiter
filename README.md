@@ -4,7 +4,7 @@
 [![pub package](https://img.shields.io/pub/v/philiprehberger_rate_limiter.svg)](https://pub.dev/packages/philiprehberger_rate_limiter)
 [![Last updated](https://img.shields.io/github/last-commit/philiprehberger/dart-rate-limiter)](https://github.com/philiprehberger/dart-rate-limiter/commits/main)
 
-Token bucket and sliding window rate limiting for async operations
+Token bucket, sliding window, and fixed window rate limiting for async operations
 
 ## Requirements
 
@@ -16,7 +16,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  philiprehberger_rate_limiter: ^0.1.0
+  philiprehberger_rate_limiter: ^0.2.0
 ```
 
 Then run:
@@ -79,9 +79,27 @@ if (window.tryAcquire()) {
 await window.acquire();
 ```
 
+### Fixed Window
+
+The fixed window algorithm allows up to a set number of requests within each fixed time interval. The counter resets completely when the window expires.
+
+```dart
+final limiter = FixedWindow(
+  maxRequests: 10,
+  window: Duration(seconds: 1),
+);
+
+if (limiter.tryAcquire()) {
+  print('Allowed');
+}
+
+// Wait until the next window
+await limiter.acquire();
+```
+
 ### Per-Key Rate Limiting
 
-Both algorithms support per-key rate limiting for multi-tenant scenarios.
+All algorithms support per-key rate limiting for multi-tenant scenarios.
 
 ```dart
 final limiter = TokenBucket(
@@ -94,15 +112,66 @@ limiter.tryAcquire(key: 'user-456');
 limiter.reset(key: 'user-123');
 ```
 
+### Statistics
+
+Track request counts with the `stats()` method available on all rate limiters.
+
+```dart
+final limiter = TokenBucket(
+  capacity: 5,
+  refillInterval: Duration(seconds: 1),
+);
+
+limiter.tryAcquire();
+limiter.tryAcquire();
+
+final s = limiter.stats();
+print('Total: ${s.totalRequests}');
+print('Allowed: ${s.allowedRequests}');
+print('Rejected: ${s.rejectedRequests}');
+```
+
+### Available Permits
+
+Check remaining capacity without consuming a permit.
+
+```dart
+final limiter = FixedWindow(
+  maxRequests: 10,
+  window: Duration(seconds: 1),
+);
+
+print(limiter.availablePermits()); // 10
+limiter.tryAcquire();
+print(limiter.availablePermits()); // 9
+```
+
+### Acquire with Timeout
+
+Pass a `timeout` to `acquire()` to throw a `TimeoutException` if a permit is not available in time.
+
+```dart
+import 'dart:async';
+
+try {
+  await limiter.acquire(timeout: Duration(seconds: 5));
+} on TimeoutException {
+  print('Could not acquire permit in time');
+}
+```
+
 ## API
 
 | Method | Description |
 |--------|-------------|
 | `TokenBucket({capacity, refillInterval})` | Create a token bucket rate limiter |
 | `SlidingWindow({maxRequests, window})` | Create a sliding window rate limiter |
+| `FixedWindow({maxRequests, window})` | Create a fixed window rate limiter |
 | `RateLimiter.tryAcquire({key})` | Try to acquire a permit, returns `true` if allowed |
-| `RateLimiter.acquire({key})` | Acquire a permit, waiting if necessary |
+| `RateLimiter.acquire({key, timeout})` | Acquire a permit, waiting if necessary; throws `TimeoutException` on timeout |
 | `RateLimiter.reset({key})` | Reset state for a key, or all keys if omitted |
+| `RateLimiter.stats({key})` | Get request statistics (total, allowed, rejected) |
+| `RateLimiter.availablePermits({key})` | Check remaining permits without consuming one |
 
 ## Development
 

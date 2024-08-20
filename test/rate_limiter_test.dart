@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:philiprehberger_rate_limiter/rate_limiter.dart';
 import 'package:test/test.dart';
 
@@ -129,6 +131,106 @@ void main() {
       await limiter.acquire();
       stopwatch.stop();
       expect(stopwatch.elapsedMilliseconds, greaterThanOrEqualTo(40));
+    });
+  });
+
+  group('FixedWindow', () {
+    test('allows requests up to max', () {
+      final limiter = FixedWindow(maxRequests: 3, window: Duration(seconds: 1));
+      expect(limiter.tryAcquire(), isTrue);
+      expect(limiter.tryAcquire(), isTrue);
+      expect(limiter.tryAcquire(), isTrue);
+      expect(limiter.tryAcquire(), isFalse);
+    });
+
+    test('per-key isolation', () {
+      final limiter = FixedWindow(maxRequests: 1, window: Duration(seconds: 1));
+      expect(limiter.tryAcquire(key: 'a'), isTrue);
+      expect(limiter.tryAcquire(key: 'b'), isTrue);
+      expect(limiter.tryAcquire(key: 'a'), isFalse);
+    });
+
+    test('reset clears state', () {
+      final limiter =
+          FixedWindow(maxRequests: 1, window: Duration(seconds: 10));
+      limiter.tryAcquire();
+      limiter.reset();
+      expect(limiter.tryAcquire(), isTrue);
+    });
+
+    test('availablePermits decreases', () {
+      final limiter = FixedWindow(maxRequests: 3, window: Duration(seconds: 1));
+      expect(limiter.availablePermits(), equals(3));
+      limiter.tryAcquire();
+      expect(limiter.availablePermits(), equals(2));
+    });
+
+    test('stats tracks requests', () {
+      final limiter =
+          FixedWindow(maxRequests: 1, window: Duration(seconds: 10));
+      limiter.tryAcquire();
+      limiter.tryAcquire();
+      final s = limiter.stats();
+      expect(s.totalRequests, equals(2));
+      expect(s.allowedRequests, equals(1));
+      expect(s.rejectedRequests, equals(1));
+    });
+  });
+
+  group('TokenBucket stats', () {
+    test('tracks allowed and rejected', () {
+      final limiter =
+          TokenBucket(capacity: 1, refillInterval: Duration(seconds: 10));
+      limiter.tryAcquire();
+      limiter.tryAcquire();
+      final s = limiter.stats();
+      expect(s.totalRequests, equals(2));
+      expect(s.allowedRequests, equals(1));
+      expect(s.rejectedRequests, equals(1));
+    });
+
+    test('availablePermits returns capacity when fresh', () {
+      final limiter =
+          TokenBucket(capacity: 5, refillInterval: Duration(seconds: 1));
+      expect(limiter.availablePermits(), equals(5));
+    });
+
+    test('availablePermits decreases after acquire', () {
+      final limiter =
+          TokenBucket(capacity: 5, refillInterval: Duration(seconds: 10));
+      limiter.tryAcquire();
+      expect(limiter.availablePermits(), equals(4));
+    });
+  });
+
+  group('SlidingWindow stats', () {
+    test('tracks allowed and rejected', () {
+      final limiter =
+          SlidingWindow(maxRequests: 1, window: Duration(seconds: 10));
+      limiter.tryAcquire();
+      limiter.tryAcquire();
+      final s = limiter.stats();
+      expect(s.totalRequests, equals(2));
+      expect(s.allowedRequests, equals(1));
+      expect(s.rejectedRequests, equals(1));
+    });
+
+    test('availablePermits returns max when fresh', () {
+      final limiter =
+          SlidingWindow(maxRequests: 5, window: Duration(seconds: 1));
+      expect(limiter.availablePermits(), equals(5));
+    });
+  });
+
+  group('acquire timeout', () {
+    test('throws TimeoutException when timeout exceeded', () async {
+      final limiter =
+          TokenBucket(capacity: 1, refillInterval: Duration(seconds: 60));
+      limiter.tryAcquire(); // exhaust
+      expect(
+        () => limiter.acquire(timeout: Duration(milliseconds: 50)),
+        throwsA(isA<TimeoutException>()),
+      );
     });
   });
 }

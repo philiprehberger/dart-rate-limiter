@@ -13,6 +13,7 @@ class TokenBucket implements RateLimiter {
   final Duration refillInterval;
 
   final Map<String, _BucketState> _buckets = {};
+  final Map<String, _Stats> _stats = {};
 
   /// Creates a token bucket rate limiter.
   ///
@@ -43,17 +44,27 @@ class TokenBucket implements RateLimiter {
   @override
   bool tryAcquire({String? key}) {
     final k = key ?? '';
+    final s = _stats[k] ??= _Stats();
+    s.total++;
     final state = _bucket(k);
     _refill(state);
     if (state.tokens > 0) {
       state.tokens--;
+      s.allowed++;
       return true;
     }
+    s.rejected++;
     return false;
   }
 
   @override
-  Future<void> acquire({String? key}) async {
+  Future<void> acquire({String? key, Duration? timeout}) {
+    final future = _doAcquire(key: key);
+    if (timeout != null) return future.timeout(timeout);
+    return future;
+  }
+
+  Future<void> _doAcquire({String? key}) async {
     final k = key ?? '';
     while (!tryAcquire(key: k)) {
       await Future<void>.delayed(refillInterval);
@@ -64,9 +75,30 @@ class TokenBucket implements RateLimiter {
   void reset({String? key}) {
     if (key != null) {
       _buckets.remove(key);
+      _stats.remove(key);
     } else {
       _buckets.clear();
+      _stats.clear();
     }
+  }
+
+  @override
+  RateLimiterStats stats({String? key}) {
+    final s = _stats[key ?? ''];
+    return RateLimiterStats(
+      totalRequests: s?.total ?? 0,
+      allowedRequests: s?.allowed ?? 0,
+      rejectedRequests: s?.rejected ?? 0,
+    );
+  }
+
+  @override
+  int availablePermits({String? key}) {
+    final k = key ?? '';
+    final state = _buckets[k];
+    if (state == null) return capacity;
+    _refill(state);
+    return state.tokens;
   }
 }
 
@@ -75,4 +107,10 @@ class _BucketState {
   DateTime lastRefill;
 
   _BucketState(this.tokens) : lastRefill = DateTime.now();
+}
+
+class _Stats {
+  int total = 0;
+  int allowed = 0;
+  int rejected = 0;
 }

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-04
+
+### Added
+- `FixedWindow` rate limiter with simple window-based counting
+- Optional `timeout` parameter on `acquire()` that throws `TimeoutException`
+- `stats()` method for tracking total, allowed, and rejected request counts
+- `availablePermits()` to check remaining capacity without consuming a permit
+- `RateLimiterStats` class for structured statistics access
+
 ## [0.1.0] - 2026-04-03
 
 ### Added

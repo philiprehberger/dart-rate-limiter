@@ -85,6 +85,9 @@ class FixedWindow extends RateLimiter {
     final state = _getOrResetWindow(key ?? '');
     return maxRequests - state.count;
   }
+
+  @override
+  bool isExhausted({String? key}) => availablePermits(key: key) == 0;
 }
 
 class _WindowState {

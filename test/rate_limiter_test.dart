@@ -222,6 +222,43 @@ void main() {
     });
   });
 
+  group('isExhausted', () {
+    test('TokenBucket returns false when permits available', () {
+      final limiter =
+          TokenBucket(capacity: 2, refillInterval: Duration(seconds: 10));
+      expect(limiter.isExhausted(), isFalse);
+    });
+
+    test('TokenBucket returns true when no permits remain', () {
+      final limiter =
+          TokenBucket(capacity: 1, refillInterval: Duration(seconds: 10));
+      limiter.tryAcquire();
+      expect(limiter.isExhausted(), isTrue);
+    });
+
+    test('SlidingWindow returns true when exhausted', () {
+      final limiter =
+          SlidingWindow(maxRequests: 1, window: Duration(seconds: 10));
+      limiter.tryAcquire();
+      expect(limiter.isExhausted(), isTrue);
+    });
+
+    test('FixedWindow returns true when exhausted', () {
+      final limiter =
+          FixedWindow(maxRequests: 1, window: Duration(seconds: 10));
+      limiter.tryAcquire();
+      expect(limiter.isExhausted(), isTrue);
+    });
+
+    test('per-key isolation', () {
+      final limiter =
+          TokenBucket(capacity: 1, refillInterval: Duration(seconds: 10));
+      limiter.tryAcquire(key: 'a');
+      expect(limiter.isExhausted(key: 'a'), isTrue);
+      expect(limiter.isExhausted(key: 'b'), isFalse);
+    });
+  });
+
   group('acquire timeout', () {
     test('throws TimeoutException when timeout exceeded', () async {
       final limiter =

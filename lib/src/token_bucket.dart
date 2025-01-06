@@ -100,6 +100,9 @@ class TokenBucket implements RateLimiter {
     _refill(state);
     return state.tokens;
   }
+
+  @override
+  bool isExhausted({String? key}) => availablePermits(key: key) == 0;
 }
 
 class _BucketState {

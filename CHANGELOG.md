@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-11
+
+### Added
+- `retryAfter()` method on all rate limiters that returns the duration until the next permit becomes available
+
+### Fixed
+- Updated package description to include fixed window algorithm
+- `FixedWindow` now uses `implements RateLimiter` for consistency with other implementations
+
 ## [0.3.0] - 2026-04-05
 
 ### Added

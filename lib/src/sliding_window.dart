@@ -13,7 +13,7 @@ class SlidingWindow implements RateLimiter {
   final Duration window;
 
   final Map<String, List<DateTime>> _timestamps = {};
-  final Map<String, _Stats> _stats = {};
+  final Map<String, Stats> _stats = {};
 
   /// Creates a sliding window rate limiter.
   ///
@@ -37,7 +37,7 @@ class SlidingWindow implements RateLimiter {
   @override
   bool tryAcquire({String? key}) {
     final k = key ?? '';
-    final s = _stats[k] ??= _Stats();
+    final s = _stats[k] ??= Stats();
     s.total++;
     final ts = _timestamps_(k);
     _cleanup(ts);
@@ -106,10 +106,17 @@ class SlidingWindow implements RateLimiter {
 
   @override
   bool isExhausted({String? key}) => availablePermits(key: key) == 0;
-}
 
-class _Stats {
-  int total = 0;
-  int allowed = 0;
-  int rejected = 0;
+  @override
+  Duration? retryAfter({String? key}) {
+    final k = key ?? '';
+    final ts = _timestamps[k];
+    if (ts == null || ts.isEmpty) return null;
+    _cleanup(ts);
+    if (ts.length < maxRequests) return null;
+    final oldest = ts.first;
+    final expiresAt = oldest.add(window);
+    final wait = expiresAt.difference(DateTime.now());
+    return wait > Duration.zero ? wait : Duration.zero;
+  }
 }

@@ -13,7 +13,7 @@ class TokenBucket implements RateLimiter {
   final Duration refillInterval;
 
   final Map<String, _BucketState> _buckets = {};
-  final Map<String, _Stats> _stats = {};
+  final Map<String, Stats> _stats = {};
 
   /// Creates a token bucket rate limiter.
   ///
@@ -44,7 +44,7 @@ class TokenBucket implements RateLimiter {
   @override
   bool tryAcquire({String? key}) {
     final k = key ?? '';
-    final s = _stats[k] ??= _Stats();
+    final s = _stats[k] ??= Stats();
     s.total++;
     final state = _bucket(k);
     _refill(state);
@@ -103,6 +103,18 @@ class TokenBucket implements RateLimiter {
 
   @override
   bool isExhausted({String? key}) => availablePermits(key: key) == 0;
+
+  @override
+  Duration? retryAfter({String? key}) {
+    final k = key ?? '';
+    final state = _buckets[k];
+    if (state == null) return null;
+    _refill(state);
+    if (state.tokens > 0) return null;
+    final nextRefill = state.lastRefill.add(refillInterval);
+    final wait = nextRefill.difference(DateTime.now());
+    return wait > Duration.zero ? wait : Duration.zero;
+  }
 }
 
 class _BucketState {
@@ -110,10 +122,4 @@ class _BucketState {
   DateTime lastRefill;
 
   _BucketState(this.tokens) : lastRefill = DateTime.now();
-}
-
-class _Stats {
-  int total = 0;
-  int allowed = 0;
-  int rejected = 0;
 }

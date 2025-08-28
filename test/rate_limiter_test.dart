@@ -270,4 +270,71 @@ void main() {
       );
     });
   });
+
+  group('retryAfter', () {
+    test('TokenBucket returns null when permits available', () {
+      final limiter =
+          TokenBucket(capacity: 2, refillInterval: Duration(seconds: 10));
+      expect(limiter.retryAfter(), isNull);
+    });
+
+    test('TokenBucket returns duration when exhausted', () {
+      final limiter =
+          TokenBucket(capacity: 1, refillInterval: Duration(seconds: 10));
+      limiter.tryAcquire();
+      final wait = limiter.retryAfter();
+      expect(wait, isNotNull);
+      expect(wait!.inSeconds, greaterThan(0));
+      expect(wait.inSeconds, lessThanOrEqualTo(10));
+    });
+
+    test('SlidingWindow returns null when permits available', () {
+      final limiter =
+          SlidingWindow(maxRequests: 2, window: Duration(seconds: 10));
+      expect(limiter.retryAfter(), isNull);
+    });
+
+    test('SlidingWindow returns duration when exhausted', () {
+      final limiter =
+          SlidingWindow(maxRequests: 1, window: Duration(seconds: 10));
+      limiter.tryAcquire();
+      final wait = limiter.retryAfter();
+      expect(wait, isNotNull);
+      expect(wait!.inSeconds, greaterThan(0));
+      expect(wait.inSeconds, lessThanOrEqualTo(10));
+    });
+
+    test('FixedWindow returns null when permits available', () {
+      final limiter =
+          FixedWindow(maxRequests: 2, window: Duration(seconds: 10));
+      expect(limiter.retryAfter(), isNull);
+    });
+
+    test('FixedWindow returns duration when exhausted', () {
+      final limiter =
+          FixedWindow(maxRequests: 1, window: Duration(seconds: 10));
+      limiter.tryAcquire();
+      final wait = limiter.retryAfter();
+      expect(wait, isNotNull);
+      expect(wait!.inSeconds, greaterThan(0));
+      expect(wait.inSeconds, lessThanOrEqualTo(10));
+    });
+
+    test('per-key isolation', () {
+      final limiter =
+          TokenBucket(capacity: 1, refillInterval: Duration(seconds: 10));
+      limiter.tryAcquire(key: 'a');
+      expect(limiter.retryAfter(key: 'a'), isNotNull);
+      expect(limiter.retryAfter(key: 'b'), isNull);
+    });
+
+    test('returns null after reset', () {
+      final limiter =
+          TokenBucket(capacity: 1, refillInterval: Duration(seconds: 10));
+      limiter.tryAcquire();
+      expect(limiter.retryAfter(), isNotNull);
+      limiter.reset();
+      expect(limiter.retryAfter(), isNull);
+    });
+  });
 }

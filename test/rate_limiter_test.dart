@@ -337,4 +337,93 @@ void main() {
       expect(limiter.retryAfter(), isNull);
     });
   });
+
+  group('CompositeRateLimiter', () {
+    test('allows when all limiters have capacity', () {
+      final composite = CompositeRateLimiter([
+        TokenBucket(capacity: 5, refillInterval: Duration(seconds: 10)),
+        FixedWindow(maxRequests: 10, window: Duration(seconds: 10)),
+      ]);
+      expect(composite.tryAcquire(), isTrue);
+    });
+
+    test('blocks when any limiter is exhausted', () {
+      final composite = CompositeRateLimiter([
+        TokenBucket(capacity: 1, refillInterval: Duration(seconds: 10)),
+        FixedWindow(maxRequests: 10, window: Duration(seconds: 10)),
+      ]);
+      expect(composite.tryAcquire(), isTrue);
+      expect(composite.tryAcquire(), isFalse);
+    });
+
+    test('availablePermits returns minimum across limiters', () {
+      final composite = CompositeRateLimiter([
+        TokenBucket(capacity: 3, refillInterval: Duration(seconds: 10)),
+        FixedWindow(maxRequests: 10, window: Duration(seconds: 10)),
+      ]);
+      expect(composite.availablePermits(), equals(3));
+    });
+
+    test('isExhausted returns true when any limiter is exhausted', () {
+      final composite = CompositeRateLimiter([
+        TokenBucket(capacity: 1, refillInterval: Duration(seconds: 10)),
+        FixedWindow(maxRequests: 10, window: Duration(seconds: 10)),
+      ]);
+      composite.tryAcquire();
+      expect(composite.isExhausted(), isTrue);
+    });
+
+    test('retryAfter returns longest wait', () {
+      final bucket =
+          TokenBucket(capacity: 1, refillInterval: Duration(seconds: 5));
+      final window =
+          FixedWindow(maxRequests: 1, window: Duration(seconds: 10));
+      final composite = CompositeRateLimiter([bucket, window]);
+      composite.tryAcquire();
+      final wait = composite.retryAfter();
+      expect(wait, isNotNull);
+      // Should be the longer of the two waits (fixed window = 10s)
+      expect(wait!.inSeconds, greaterThan(4));
+    });
+
+    test('stats tracks composite requests', () {
+      final composite = CompositeRateLimiter([
+        TokenBucket(capacity: 1, refillInterval: Duration(seconds: 10)),
+        FixedWindow(maxRequests: 10, window: Duration(seconds: 10)),
+      ]);
+      composite.tryAcquire();
+      composite.tryAcquire();
+      final s = composite.stats();
+      expect(s.totalRequests, equals(2));
+      expect(s.allowedRequests, equals(1));
+      expect(s.rejectedRequests, equals(1));
+    });
+
+    test('per-key isolation', () {
+      final composite = CompositeRateLimiter([
+        TokenBucket(capacity: 1, refillInterval: Duration(seconds: 10)),
+      ]);
+      expect(composite.tryAcquire(key: 'a'), isTrue);
+      expect(composite.tryAcquire(key: 'a'), isFalse);
+      expect(composite.tryAcquire(key: 'b'), isTrue);
+    });
+
+    test('reset clears all limiters', () {
+      final composite = CompositeRateLimiter([
+        TokenBucket(capacity: 1, refillInterval: Duration(seconds: 10)),
+        FixedWindow(maxRequests: 1, window: Duration(seconds: 10)),
+      ]);
+      composite.tryAcquire();
+      expect(composite.tryAcquire(), isFalse);
+      composite.reset();
+      expect(composite.tryAcquire(), isTrue);
+    });
+
+    test('retryAfter returns null when permits available', () {
+      final composite = CompositeRateLimiter([
+        TokenBucket(capacity: 5, refillInterval: Duration(seconds: 10)),
+      ]);
+      expect(composite.retryAfter(), isNull);
+    });
+  });
 }

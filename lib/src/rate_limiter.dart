@@ -1,11 +1,42 @@
+import 'dart:async';
+
+/// Statistics for a rate limiter.
+class RateLimiterStats {
+  /// Creates rate limiter statistics.
+  const RateLimiterStats({
+    required this.totalRequests,
+    required this.allowedRequests,
+    required this.rejectedRequests,
+  });
+
+  /// Total number of acquire attempts.
+  final int totalRequests;
+
+  /// Number of attempts that were allowed.
+  final int allowedRequests;
+
+  /// Number of attempts that were rejected.
+  final int rejectedRequests;
+}
+
 /// Base interface for rate limiters.
 abstract class RateLimiter {
   /// Try to acquire a permit. Returns `true` if allowed, `false` if rate-limited.
   bool tryAcquire({String? key});
 
   /// Acquire a permit, waiting if necessary until one is available.
-  Future<void> acquire({String? key});
+  ///
+  /// If [timeout] is provided, throws a [TimeoutException] if a permit
+  /// is not acquired within the specified duration.
+  Future<void> acquire({String? key, Duration? timeout});
 
   /// Reset the rate limiter state.
   void reset({String? key});
+
+  /// Returns usage statistics for the given [key], or global stats if
+  /// [key] is null.
+  RateLimiterStats stats({String? key});
+
+  /// Returns the number of permits currently available for the given [key].
+  int availablePermits({String? key});
 }

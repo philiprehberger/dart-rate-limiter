@@ -39,4 +39,7 @@ abstract class RateLimiter {
 
   /// Returns the number of permits currently available for the given [key].
   int availablePermits({String? key});
+
+  /// Returns `true` when no permits are available for the given [key].
+  bool isExhausted({String? key});
 }

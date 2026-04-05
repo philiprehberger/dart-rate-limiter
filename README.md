@@ -16,7 +16,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  philiprehberger_rate_limiter: ^0.2.0
+  philiprehberger_rate_limiter: ^0.3.0
 ```
 
 Then run:
@@ -146,6 +146,21 @@ limiter.tryAcquire();
 print(limiter.availablePermits()); // 9
 ```
 
+### Exhaustion Check
+
+Quickly check whether a rate limiter has any permits left.
+
+```dart
+final limiter = TokenBucket(
+  capacity: 1,
+  refillInterval: Duration(seconds: 1),
+);
+
+print(limiter.isExhausted()); // false
+limiter.tryAcquire();
+print(limiter.isExhausted()); // true
+```
+
 ### Acquire with Timeout
 
 Pass a `timeout` to `acquire()` to throw a `TimeoutException` if a permit is not available in time.
@@ -172,6 +187,7 @@ try {
 | `RateLimiter.reset({key})` | Reset state for a key, or all keys if omitted |
 | `RateLimiter.stats({key})` | Get request statistics (total, allowed, rejected) |
 | `RateLimiter.availablePermits({key})` | Check remaining permits without consuming one |
+| `RateLimiter.isExhausted({key})` | Returns `true` when no permits are available |
 
 ## Development
 

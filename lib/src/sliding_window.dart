@@ -103,6 +103,9 @@ class SlidingWindow implements RateLimiter {
     _cleanup(timestamps);
     return maxRequests - timestamps.length;
   }
+
+  @override
+  bool isExhausted({String? key}) => availablePermits(key: key) == 0;
 }
 
 class _Stats {

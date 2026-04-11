@@ -42,4 +42,20 @@ abstract class RateLimiter {
 
   /// Returns `true` when no permits are available for the given [key].
   bool isExhausted({String? key});
+
+  /// Returns the duration until the next permit becomes available for [key],
+  /// or `null` if a permit is already available.
+  Duration? retryAfter({String? key});
+}
+
+/// Internal statistics tracker shared across rate limiter implementations.
+class Stats {
+  /// Total number of acquire attempts.
+  int total = 0;
+
+  /// Number of attempts that were allowed.
+  int allowed = 0;
+
+  /// Number of attempts that were rejected.
+  int rejected = 0;
 }

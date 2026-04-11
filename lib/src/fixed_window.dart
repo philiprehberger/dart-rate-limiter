@@ -4,7 +4,7 @@ import 'rate_limiter.dart';
 ///
 /// Allows up to [maxRequests] within each fixed [window] duration.
 /// The window resets completely after each interval.
-class FixedWindow extends RateLimiter {
+class FixedWindow implements RateLimiter {
   /// Creates a fixed window rate limiter.
   FixedWindow({required this.maxRequests, required this.window})
       : assert(maxRequests > 0),
@@ -17,7 +17,7 @@ class FixedWindow extends RateLimiter {
   final Duration window;
 
   final Map<String, _WindowState> _windows = {};
-  final Map<String, _Stats> _stats = {};
+  final Map<String, Stats> _stats = {};
 
   _WindowState _getOrResetWindow(String key) {
     final now = DateTime.now();
@@ -29,7 +29,7 @@ class FixedWindow extends RateLimiter {
     return state;
   }
 
-  _Stats _getStats(String key) => _stats[key] ??= _Stats();
+  Stats _getStats(String key) => _stats[key] ??= Stats();
 
   @override
   bool tryAcquire({String? key}) {
@@ -88,16 +88,23 @@ class FixedWindow extends RateLimiter {
 
   @override
   bool isExhausted({String? key}) => availablePermits(key: key) == 0;
+
+  @override
+  Duration? retryAfter({String? key}) {
+    final k = key ?? '';
+    final state = _windows[k];
+    if (state == null) return null;
+    final now = DateTime.now();
+    if (now.difference(state.windowStart) >= window) return null;
+    if (state.count < maxRequests) return null;
+    final windowEnd = state.windowStart.add(window);
+    final wait = windowEnd.difference(now);
+    return wait > Duration.zero ? wait : Duration.zero;
+  }
 }
 
 class _WindowState {
   _WindowState({required this.windowStart, required this.count});
   final DateTime windowStart;
   int count;
-}
-
-class _Stats {
-  int total = 0;
-  int allowed = 0;
-  int rejected = 0;
 }

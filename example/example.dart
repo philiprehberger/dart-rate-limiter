@@ -44,4 +44,16 @@ void main() async {
   print('User A: ${perUser.tryAcquire(key: "user-a") ? "allowed" : "blocked"}');
   print('User A: ${perUser.tryAcquire(key: "user-a") ? "allowed" : "blocked"}');
   print('User B: ${perUser.tryAcquire(key: "user-b") ? "allowed" : "blocked"}');
+
+  // Composite: enforce multiple tiers at once
+  final composite = CompositeRateLimiter([
+    TokenBucket(capacity: 5, refillInterval: Duration(seconds: 1)),
+    SlidingWindow(maxRequests: 100, window: Duration(minutes: 1)),
+  ]);
+
+  print('\n--- Composite Rate Limiter ---');
+  for (var i = 1; i <= 7; i++) {
+    final allowed = composite.tryAcquire();
+    print('Request $i: ${allowed ? "allowed" : "rate-limited"}');
+  }
 }

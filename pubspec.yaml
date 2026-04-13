@@ -1,7 +1,7 @@
 name: philiprehberger_rate_limiter
 description: >-
   Token bucket, sliding window, and fixed window rate limiting for async operations
-version: 0.4.0
+version: 0.5.0
 homepage: https://philiprehberger.com/open-source-packages/dart/philiprehberger_rate_limiter
 repository: https://github.com/philiprehberger/dart-rate-limiter
 issue_tracker: https://github.com/philiprehberger/dart-rate-limiter/issues

@@ -16,7 +16,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  philiprehberger_rate_limiter: ^0.4.0
+  philiprehberger_rate_limiter: ^0.5.0
 ```
 
 Then run:
@@ -178,6 +178,21 @@ if (wait != null) {
 }
 ```
 
+### Composite Rate Limiter
+
+Combine multiple rate limiters to enforce multi-tier limits. A request is only allowed when **all** inner limiters permit it.
+
+```dart
+final limiter = CompositeRateLimiter([
+  TokenBucket(capacity: 10, refillInterval: Duration(seconds: 1)),
+  SlidingWindow(maxRequests: 1000, window: Duration(hours: 1)),
+]);
+
+if (limiter.tryAcquire()) {
+  // Passed both the per-second and per-hour limit
+}
+```
+
 ### Acquire with Timeout
 
 Pass a `timeout` to `acquire()` to throw a `TimeoutException` if a permit is not available in time.
@@ -199,6 +214,7 @@ try {
 | `TokenBucket({capacity, refillInterval})` | Create a token bucket rate limiter |
 | `SlidingWindow({maxRequests, window})` | Create a sliding window rate limiter |
 | `FixedWindow({maxRequests, window})` | Create a fixed window rate limiter |
+| `CompositeRateLimiter(limiters)` | Create a composite rate limiter from multiple limiters |
 | `RateLimiter.tryAcquire({key})` | Try to acquire a permit, returns `true` if allowed |
 | `RateLimiter.acquire({key, timeout})` | Acquire a permit, waiting if necessary; throws `TimeoutException` on timeout |
 | `RateLimiter.reset({key})` | Reset state for a key, or all keys if omitted |

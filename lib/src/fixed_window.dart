@@ -18,6 +18,21 @@ class FixedWindow implements RateLimiter {
 
   final Map<String, _WindowState> _windows = {};
   final Map<String, Stats> _stats = {};
+  bool _disposed = false;
+
+  @override
+  bool get isDisposed => _disposed;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _windows.clear();
+    _stats.clear();
+  }
+
+  void _checkDisposed() {
+    if (_disposed) throw StateError('RateLimiter has been disposed');
+  }
 
   _WindowState _getOrResetWindow(String key) {
     final now = DateTime.now();
@@ -33,6 +48,7 @@ class FixedWindow implements RateLimiter {
 
   @override
   bool tryAcquire({String? key}) {
+    _checkDisposed();
     final k = key ?? '';
     final s = _getStats(k);
     s.total++;
@@ -48,6 +64,7 @@ class FixedWindow implements RateLimiter {
 
   @override
   Future<void> acquire({String? key, Duration? timeout}) {
+    _checkDisposed();
     final future = _doAcquire(key: key);
     if (timeout != null) return future.timeout(timeout);
     return future;
@@ -72,6 +89,7 @@ class FixedWindow implements RateLimiter {
 
   @override
   RateLimiterStats stats({String? key}) {
+    _checkDisposed();
     final s = _stats[key ?? ''];
     return RateLimiterStats(
       totalRequests: s?.total ?? 0,
@@ -82,15 +100,20 @@ class FixedWindow implements RateLimiter {
 
   @override
   int availablePermits({String? key}) {
+    _checkDisposed();
     final state = _getOrResetWindow(key ?? '');
     return maxRequests - state.count;
   }
 
   @override
-  bool isExhausted({String? key}) => availablePermits(key: key) == 0;
+  bool isExhausted({String? key}) {
+    _checkDisposed();
+    return availablePermits(key: key) == 0;
+  }
 
   @override
   Duration? retryAfter({String? key}) {
+    _checkDisposed();
     final k = key ?? '';
     final state = _windows[k];
     if (state == null) return null;

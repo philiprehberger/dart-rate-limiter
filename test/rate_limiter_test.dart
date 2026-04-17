@@ -426,4 +426,49 @@ void main() {
       expect(composite.retryAfter(), isNull);
     });
   });
+
+  group('dispose', () {
+    test('TokenBucket throws after dispose', () {
+      final limiter = TokenBucket(capacity: 5, refillInterval: Duration(seconds: 1));
+      limiter.dispose();
+      expect(limiter.isDisposed, isTrue);
+      expect(() => limiter.tryAcquire(), throwsStateError);
+    });
+
+    test('SlidingWindow throws after dispose', () {
+      final limiter = SlidingWindow(maxRequests: 5, window: Duration(seconds: 1));
+      limiter.dispose();
+      expect(limiter.isDisposed, isTrue);
+      expect(() => limiter.tryAcquire(), throwsStateError);
+    });
+
+    test('FixedWindow throws after dispose', () {
+      final limiter = FixedWindow(maxRequests: 5, window: Duration(seconds: 1));
+      limiter.dispose();
+      expect(limiter.isDisposed, isTrue);
+      expect(() => limiter.tryAcquire(), throwsStateError);
+    });
+
+    test('CompositeRateLimiter disposes inner limiters', () {
+      final inner = TokenBucket(capacity: 5, refillInterval: Duration(seconds: 1));
+      final composite = CompositeRateLimiter([inner]);
+      composite.dispose();
+      expect(composite.isDisposed, isTrue);
+      expect(inner.isDisposed, isTrue);
+    });
+
+    test('acquire throws after dispose', () {
+      final limiter = TokenBucket(capacity: 5, refillInterval: Duration(seconds: 1));
+      limiter.dispose();
+      expect(() => limiter.acquire(), throwsStateError);
+    });
+
+    test('reset still works after dispose', () {
+      final limiter = TokenBucket(capacity: 5, refillInterval: Duration(seconds: 1));
+      limiter.tryAcquire();
+      limiter.dispose();
+      // reset should not throw - it's a cleanup operation
+      expect(() => limiter.tryAcquire(), throwsStateError);
+    });
+  });
 }

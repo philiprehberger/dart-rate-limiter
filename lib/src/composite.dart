@@ -12,6 +12,7 @@ class CompositeRateLimiter implements RateLimiter {
   final List<RateLimiter> limiters;
 
   final Map<String, Stats> _stats = {};
+  bool _disposed = false;
 
   /// Creates a composite rate limiter.
   ///
@@ -19,10 +20,27 @@ class CompositeRateLimiter implements RateLimiter {
   CompositeRateLimiter(this.limiters)
       : assert(limiters.isNotEmpty, 'limiters must not be empty');
 
+  @override
+  bool get isDisposed => _disposed;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    for (final limiter in limiters) {
+      limiter.dispose();
+    }
+    _stats.clear();
+  }
+
+  void _checkDisposed() {
+    if (_disposed) throw StateError('RateLimiter has been disposed');
+  }
+
   Stats _getStats(String key) => _stats[key] ??= Stats();
 
   @override
   bool tryAcquire({String? key}) {
+    _checkDisposed();
     final k = key ?? '';
     final s = _getStats(k);
     s.total++;
@@ -45,6 +63,7 @@ class CompositeRateLimiter implements RateLimiter {
 
   @override
   Future<void> acquire({String? key, Duration? timeout}) {
+    _checkDisposed();
     final future = _doAcquire(key: key);
     if (timeout != null) return future.timeout(timeout);
     return future;
@@ -71,6 +90,7 @@ class CompositeRateLimiter implements RateLimiter {
 
   @override
   RateLimiterStats stats({String? key}) {
+    _checkDisposed();
     final s = _stats[key ?? ''];
     return RateLimiterStats(
       totalRequests: s?.total ?? 0,
@@ -81,6 +101,7 @@ class CompositeRateLimiter implements RateLimiter {
 
   @override
   int availablePermits({String? key}) {
+    _checkDisposed();
     var min = limiters.first.availablePermits(key: key);
     for (var i = 1; i < limiters.length; i++) {
       final p = limiters[i].availablePermits(key: key);
@@ -91,11 +112,13 @@ class CompositeRateLimiter implements RateLimiter {
 
   @override
   bool isExhausted({String? key}) {
+    _checkDisposed();
     return limiters.any((l) => l.isExhausted(key: key));
   }
 
   @override
   Duration? retryAfter({String? key}) {
+    _checkDisposed();
     Duration? max;
     for (final limiter in limiters) {
       final wait = limiter.retryAfter(key: key);

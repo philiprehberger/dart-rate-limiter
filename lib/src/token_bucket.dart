@@ -14,6 +14,7 @@ class TokenBucket implements RateLimiter {
 
   final Map<String, _BucketState> _buckets = {};
   final Map<String, Stats> _stats = {};
+  bool _disposed = false;
 
   /// Creates a token bucket rate limiter.
   ///
@@ -25,6 +26,20 @@ class TokenBucket implements RateLimiter {
   })  : assert(capacity > 0, 'capacity must be positive'),
         assert(
             refillInterval > Duration.zero, 'refillInterval must be positive');
+
+  @override
+  bool get isDisposed => _disposed;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _buckets.clear();
+    _stats.clear();
+  }
+
+  void _checkDisposed() {
+    if (_disposed) throw StateError('RateLimiter has been disposed');
+  }
 
   _BucketState _bucket(String key) {
     return _buckets.putIfAbsent(key, () => _BucketState(capacity));
@@ -43,6 +58,7 @@ class TokenBucket implements RateLimiter {
 
   @override
   bool tryAcquire({String? key}) {
+    _checkDisposed();
     final k = key ?? '';
     final s = _stats[k] ??= Stats();
     s.total++;
@@ -59,6 +75,7 @@ class TokenBucket implements RateLimiter {
 
   @override
   Future<void> acquire({String? key, Duration? timeout}) {
+    _checkDisposed();
     final future = _doAcquire(key: key);
     if (timeout != null) return future.timeout(timeout);
     return future;
@@ -84,6 +101,7 @@ class TokenBucket implements RateLimiter {
 
   @override
   RateLimiterStats stats({String? key}) {
+    _checkDisposed();
     final s = _stats[key ?? ''];
     return RateLimiterStats(
       totalRequests: s?.total ?? 0,
@@ -94,6 +112,7 @@ class TokenBucket implements RateLimiter {
 
   @override
   int availablePermits({String? key}) {
+    _checkDisposed();
     final k = key ?? '';
     final state = _buckets[k];
     if (state == null) return capacity;
@@ -102,10 +121,14 @@ class TokenBucket implements RateLimiter {
   }
 
   @override
-  bool isExhausted({String? key}) => availablePermits(key: key) == 0;
+  bool isExhausted({String? key}) {
+    _checkDisposed();
+    return availablePermits(key: key) == 0;
+  }
 
   @override
   Duration? retryAfter({String? key}) {
+    _checkDisposed();
     final k = key ?? '';
     final state = _buckets[k];
     if (state == null) return null;

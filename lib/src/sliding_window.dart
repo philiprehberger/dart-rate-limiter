@@ -14,6 +14,7 @@ class SlidingWindow implements RateLimiter {
 
   final Map<String, List<DateTime>> _timestamps = {};
   final Map<String, Stats> _stats = {};
+  bool _disposed = false;
 
   /// Creates a sliding window rate limiter.
   ///
@@ -24,6 +25,20 @@ class SlidingWindow implements RateLimiter {
     required this.window,
   })  : assert(maxRequests > 0, 'maxRequests must be positive'),
         assert(window > Duration.zero, 'window must be positive');
+
+  @override
+  bool get isDisposed => _disposed;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _timestamps.clear();
+    _stats.clear();
+  }
+
+  void _checkDisposed() {
+    if (_disposed) throw StateError('RateLimiter has been disposed');
+  }
 
   List<DateTime> _timestamps_(String key) {
     return _timestamps.putIfAbsent(key, () => []);
@@ -36,6 +51,7 @@ class SlidingWindow implements RateLimiter {
 
   @override
   bool tryAcquire({String? key}) {
+    _checkDisposed();
     final k = key ?? '';
     final s = _stats[k] ??= Stats();
     s.total++;
@@ -52,6 +68,7 @@ class SlidingWindow implements RateLimiter {
 
   @override
   Future<void> acquire({String? key, Duration? timeout}) {
+    _checkDisposed();
     final future = _doAcquire(key: key);
     if (timeout != null) return future.timeout(timeout);
     return future;
@@ -87,6 +104,7 @@ class SlidingWindow implements RateLimiter {
 
   @override
   RateLimiterStats stats({String? key}) {
+    _checkDisposed();
     final s = _stats[key ?? ''];
     return RateLimiterStats(
       totalRequests: s?.total ?? 0,
@@ -97,6 +115,7 @@ class SlidingWindow implements RateLimiter {
 
   @override
   int availablePermits({String? key}) {
+    _checkDisposed();
     final k = key ?? '';
     final timestamps = _timestamps[k];
     if (timestamps == null) return maxRequests;
@@ -105,10 +124,14 @@ class SlidingWindow implements RateLimiter {
   }
 
   @override
-  bool isExhausted({String? key}) => availablePermits(key: key) == 0;
+  bool isExhausted({String? key}) {
+    _checkDisposed();
+    return availablePermits(key: key) == 0;
+  }
 
   @override
   Duration? retryAfter({String? key}) {
+    _checkDisposed();
     final k = key ?? '';
     final ts = _timestamps[k];
     if (ts == null || ts.isEmpty) return null;

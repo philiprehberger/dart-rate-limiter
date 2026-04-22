@@ -16,7 +16,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  philiprehberger_rate_limiter: ^0.5.0
+  philiprehberger_rate_limiter: ^0.6.0
 ```
 
 Then run:
@@ -207,6 +207,27 @@ try {
 }
 ```
 
+### Disposing
+
+Clean up rate limiter resources when they are no longer needed:
+
+```dart
+final limiter = TokenBucket(
+  capacity: 10,
+  refillInterval: Duration(seconds: 1),
+);
+
+// Use the limiter...
+limiter.tryAcquire();
+
+// Clean up when done
+limiter.dispose();
+print(limiter.isDisposed); // true
+
+// Throws StateError after dispose
+limiter.tryAcquire(); // StateError: RateLimiter has been disposed
+```
+
 ## API
 
 | Method | Description |
@@ -222,6 +243,8 @@ try {
 | `RateLimiter.availablePermits({key})` | Check remaining permits without consuming one |
 | `RateLimiter.isExhausted({key})` | Returns `true` when no permits are available |
 | `RateLimiter.retryAfter({key})` | Returns duration until next permit, or `null` if available |
+| `RateLimiter.dispose()` | Release all resources; subsequent acquire calls throw `StateError` |
+| `RateLimiter.isDisposed` | Whether the rate limiter has been disposed |
 
 ## Development
 

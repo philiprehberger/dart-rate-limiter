@@ -46,6 +46,15 @@ abstract class RateLimiter {
   /// Returns the duration until the next permit becomes available for [key],
   /// or `null` if a permit is already available.
   Duration? retryAfter({String? key});
+
+  /// Dispose of the rate limiter, releasing all resources.
+  ///
+  /// After calling dispose, any calls to [tryAcquire] or [acquire]
+  /// will throw a [StateError].
+  void dispose();
+
+  /// Whether this rate limiter has been disposed.
+  bool get isDisposed;
 }
 
 /// Internal statistics tracker shared across rate limiter implementations.

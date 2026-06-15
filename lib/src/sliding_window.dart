@@ -67,6 +67,27 @@ class SlidingWindow implements RateLimiter {
   }
 
   @override
+  bool tryAcquireMany(int count, {String? key}) {
+    _checkDisposed();
+    assert(count > 0, 'count must be positive');
+    final k = key ?? '';
+    final s = _stats[k] ??= Stats();
+    s.total++;
+    final ts = _timestamps_(k);
+    _cleanup(ts);
+    if (ts.length + count <= maxRequests) {
+      final now = DateTime.now();
+      for (var i = 0; i < count; i++) {
+        ts.add(now);
+      }
+      s.allowed++;
+      return true;
+    }
+    s.rejected++;
+    return false;
+  }
+
+  @override
   Future<void> acquire({String? key, Duration? timeout}) {
     _checkDisposed();
     final future = _doAcquire(key: key);

@@ -62,6 +62,28 @@ class CompositeRateLimiter implements RateLimiter {
   }
 
   @override
+  bool tryAcquireMany(int count, {String? key}) {
+    _checkDisposed();
+    assert(count > 0, 'count must be positive');
+    final k = key ?? '';
+    final s = _getStats(k);
+    s.total++;
+
+    for (final limiter in limiters) {
+      if (limiter.availablePermits(key: key) < count) {
+        s.rejected++;
+        return false;
+      }
+    }
+
+    for (final limiter in limiters) {
+      limiter.tryAcquireMany(count, key: key);
+    }
+    s.allowed++;
+    return true;
+  }
+
+  @override
   Future<void> acquire({String? key, Duration? timeout}) {
     _checkDisposed();
     final future = _doAcquire(key: key);

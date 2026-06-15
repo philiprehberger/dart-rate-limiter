@@ -74,6 +74,24 @@ class TokenBucket implements RateLimiter {
   }
 
   @override
+  bool tryAcquireMany(int count, {String? key}) {
+    _checkDisposed();
+    assert(count > 0, 'count must be positive');
+    final k = key ?? '';
+    final s = _stats[k] ??= Stats();
+    s.total++;
+    final state = _bucket(k);
+    _refill(state);
+    if (state.tokens >= count) {
+      state.tokens -= count;
+      s.allowed++;
+      return true;
+    }
+    s.rejected++;
+    return false;
+  }
+
+  @override
   Future<void> acquire({String? key, Duration? timeout}) {
     _checkDisposed();
     final future = _doAcquire(key: key);

@@ -4,6 +4,8 @@
 [![pub package](https://img.shields.io/pub/v/philiprehberger_rate_limiter.svg)](https://pub.dev/packages/philiprehberger_rate_limiter)
 [![Last updated](https://img.shields.io/github/last-commit/philiprehberger/dart-rate-limiter)](https://github.com/philiprehberger/dart-rate-limiter/commits/main)
 
+![philiprehberger_rate_limiter](https://raw.githubusercontent.com/philiprehberger/dart-rate-limiter/main/package-card.webp)
+
 Token bucket, sliding window, and fixed window rate limiting for async operations
 
 ## Requirements
@@ -16,7 +18,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  philiprehberger_rate_limiter: ^0.6.0
+  philiprehberger_rate_limiter: ^0.7.0
 ```
 
 Then run:
@@ -178,6 +180,21 @@ if (wait != null) {
 }
 ```
 
+### Batch Acquire
+
+Acquire multiple permits atomically. Returns `false` and consumes nothing if fewer than `count` permits are available.
+
+```dart
+final limiter = TokenBucket(
+  capacity: 10,
+  refillInterval: Duration(seconds: 1),
+);
+
+if (limiter.tryAcquireMany(5)) {
+  // 5 permits consumed at once
+}
+```
+
 ### Composite Rate Limiter
 
 Combine multiple rate limiters to enforce multi-tier limits. A request is only allowed when **all** inner limiters permit it.
@@ -237,6 +254,7 @@ limiter.tryAcquire(); // StateError: RateLimiter has been disposed
 | `FixedWindow({maxRequests, window})` | Create a fixed window rate limiter |
 | `CompositeRateLimiter(limiters)` | Create a composite rate limiter from multiple limiters |
 | `RateLimiter.tryAcquire({key})` | Try to acquire a permit, returns `true` if allowed |
+| `RateLimiter.tryAcquireMany(count, {key})` | Try to acquire `count` permits atomically; returns `false` and consumes nothing if insufficient |
 | `RateLimiter.acquire({key, timeout})` | Acquire a permit, waiting if necessary; throws `TimeoutException` on timeout |
 | `RateLimiter.reset({key})` | Reset state for a key, or all keys if omitted |
 | `RateLimiter.stats({key})` | Get request statistics (total, allowed, rejected) |

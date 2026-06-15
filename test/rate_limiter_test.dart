@@ -427,6 +427,68 @@ void main() {
     });
   });
 
+  group('tryAcquireMany', () {
+    test('TokenBucket allows when enough permits are available', () {
+      final limiter =
+          TokenBucket(capacity: 5, refillInterval: Duration(seconds: 10));
+      expect(limiter.tryAcquireMany(3), isTrue);
+      expect(limiter.availablePermits(), equals(2));
+    });
+
+    test('TokenBucket rejects and consumes nothing when insufficient', () {
+      final limiter =
+          TokenBucket(capacity: 3, refillInterval: Duration(seconds: 10));
+      expect(limiter.tryAcquireMany(5), isFalse);
+      expect(limiter.availablePermits(), equals(3));
+    });
+
+    test('SlidingWindow allows when enough permits are available', () {
+      final limiter =
+          SlidingWindow(maxRequests: 5, window: Duration(seconds: 10));
+      expect(limiter.tryAcquireMany(3), isTrue);
+      expect(limiter.availablePermits(), equals(2));
+    });
+
+    test('SlidingWindow rejects and consumes nothing when insufficient', () {
+      final limiter =
+          SlidingWindow(maxRequests: 3, window: Duration(seconds: 10));
+      expect(limiter.tryAcquireMany(5), isFalse);
+      expect(limiter.availablePermits(), equals(3));
+    });
+
+    test('FixedWindow allows when enough permits are available', () {
+      final limiter =
+          FixedWindow(maxRequests: 5, window: Duration(seconds: 10));
+      expect(limiter.tryAcquireMany(3), isTrue);
+      expect(limiter.availablePermits(), equals(2));
+    });
+
+    test('FixedWindow rejects and consumes nothing when insufficient', () {
+      final limiter =
+          FixedWindow(maxRequests: 3, window: Duration(seconds: 10));
+      expect(limiter.tryAcquireMany(5), isFalse);
+      expect(limiter.availablePermits(), equals(3));
+    });
+
+    test('CompositeRateLimiter rejects if any inner is insufficient', () {
+      final composite = CompositeRateLimiter([
+        TokenBucket(capacity: 5, refillInterval: Duration(seconds: 10)),
+        FixedWindow(maxRequests: 2, window: Duration(seconds: 10)),
+      ]);
+      expect(composite.tryAcquireMany(3), isFalse);
+      expect(composite.availablePermits(), equals(2));
+    });
+
+    test('CompositeRateLimiter consumes from all inner limiters', () {
+      final composite = CompositeRateLimiter([
+        TokenBucket(capacity: 5, refillInterval: Duration(seconds: 10)),
+        FixedWindow(maxRequests: 5, window: Duration(seconds: 10)),
+      ]);
+      expect(composite.tryAcquireMany(3), isTrue);
+      expect(composite.availablePermits(), equals(2));
+    });
+  });
+
   group('dispose', () {
     test('TokenBucket throws after dispose', () {
       final limiter = TokenBucket(capacity: 5, refillInterval: Duration(seconds: 1));

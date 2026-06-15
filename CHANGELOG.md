@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-14
+
+### Added
+- `tryAcquireMany(int count, {String? key})` on all rate limiters for atomic batch permit acquisition
+
 ## [0.6.0] - 2026-04-17
 
 ### Added

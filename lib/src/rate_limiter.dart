@@ -24,6 +24,13 @@ abstract class RateLimiter {
   /// Try to acquire a permit. Returns `true` if allowed, `false` if rate-limited.
   bool tryAcquire({String? key});
 
+  /// Try to acquire [count] permits atomically.
+  ///
+  /// Returns `true` only if all [count] permits are available and consumed.
+  /// If fewer than [count] permits are available, returns `false` and no
+  /// permits are consumed.
+  bool tryAcquireMany(int count, {String? key});
+
   /// Acquire a permit, waiting if necessary until one is available.
   ///
   /// If [timeout] is provided, throws a [TimeoutException] if a permit
